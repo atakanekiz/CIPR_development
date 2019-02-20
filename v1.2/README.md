@@ -4,6 +4,6 @@ RNA sequencing experiments
 
 ## The app is available at:
 
-https://aekiz.shinyapps.io/Cell_identity_predictor
+https://aekiz.shinyapps.io/CIPR_v1_2
 
 
