@@ -115,7 +115,7 @@ server <- function(input, output){
           'tsv'
         ), "Wrong File Format try again!"))
       
-
+      
       
       dat <- as_tibble(
         read.csv(inFile$datapath, check.names=TRUE, strip.white = TRUE)
@@ -126,7 +126,7 @@ server <- function(input, output){
         need(
           {if(sum(Reduce("|", lapply(c("logfc", "gene", "cluster"), grepl, colnames(dat), ignore.case=T))) == 3) TRUE else FALSE},
           "Formatting error: Make sure your dataset contains at least three columns named 'logfc', 'gene', and 'cluster' (capitalization is not important)"
-      )
+        )
       )
       
       req(input$run)
@@ -200,7 +200,7 @@ server <- function(input, output){
     
     if(input$sel_reference == "ImmGen"){
       
-      ref_annotation <- as_tibble(read.csv("data/ImmGen_annotations.csv", header = T))  # THE ORDER DOESN'T HAVE TO MATCH
+      ref_annotation <- as_tibble(readRDS("data/imm_annot.rds"))  # THE ORDER DOESN'T HAVE TO MATCH
       ref_annotation
       
     } else if(input$sel_reference == "Custom"){
@@ -232,7 +232,7 @@ server <- function(input, output){
   
   
   ################################################################################################################################
-   # Compare de_data against reference file
+  # Compare de_data against reference file
   analyzed_df <- reactive({
     
     
@@ -308,7 +308,7 @@ server <- function(input, output){
         
         
         
-
+        
         df$cluster <- i
         
         # Add confidence-of-prediction calculations here and append to the df
@@ -458,39 +458,39 @@ server <- function(input, output){
     
     
     top5_df <- analyzed_df() %>%
-    group_by(cluster) %>%    #cluster
-    top_n(5, wt = reference_score_sum) %>%
-    arrange(as.numeric(cluster), cluster, desc(reference_score_sum))
-  
-  
-  ordered_cluster_levels <- gtools::mixedsort(levels(as.factor(top5_df$cluster)))
-  
-  
-  top5_df$cluster <- factor(top5_df$cluster, levels = ordered_cluster_levels)
-  
-  
-  top5_df$index <- 1:nrow(top5_df)
-  
-  top5_df <- select(top5_df, cluster,
-                    ref_cell_type,
-                    reference_id,
-                    long_name,
-                    description,
-                    reference_score_sum,
-                    index, everything())
-  
-  
-  
-  top5_df_brush <<- top5_df
-  
-  top5_df
-  
+      group_by(cluster) %>%    #cluster
+      top_n(5, wt = reference_score_sum) %>%
+      arrange(as.numeric(cluster), cluster, desc(reference_score_sum))
+    
+    
+    ordered_cluster_levels <- gtools::mixedsort(levels(as.factor(top5_df$cluster)))
+    
+    
+    top5_df$cluster <- factor(top5_df$cluster, levels = ordered_cluster_levels)
+    
+    
+    top5_df$index <- 1:nrow(top5_df)
+    
+    top5_df <- select(top5_df, cluster,
+                      ref_cell_type,
+                      reference_id,
+                      long_name,
+                      description,
+                      reference_score_sum,
+                      index, everything())
+    
+    
+    
+    top5_df_brush <<- top5_df
+    
+    top5_df
+    
   })
   
   
   output$top5 <- renderPlot({
     
-   top_plot <- top_df()
+    top_plot <- top_df()
     
     ggdotplot(top_plot, x="index", y="reference_score_sum", 
               fill = "cluster", size=1, x.text.angle=90, 
@@ -517,7 +517,7 @@ server <- function(input, output){
     filename = "Identity_scores_top5.csv",
     content = function(file) {
       
-    write.csv(top_df(), file, row.names = FALSE)
+      write.csv(top_df(), file, row.names = FALSE)
     }
   )
   
