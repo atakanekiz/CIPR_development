@@ -142,6 +142,8 @@ server <- function(input, output){
     
     req(input$run)
     
+    dat[,gene_column] <- tolower(dat[,gene_column])
+    
     dat
     
   }) # close de_data reactive object
@@ -157,6 +159,8 @@ server <- function(input, output){
       reference_log <- readRDS("data/immgen_v1_reference_log.rds")
       
       ref_gene_column <<- grep("gene", colnames(reference_log), ignore.case = T, value = T)
+      
+      reference_log[,ref_gene_column] <- tolower(reference_log[,ref_gene_column])
       
     reference_log
       
