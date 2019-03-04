@@ -184,7 +184,7 @@ server <- function(input, output){
       
       
       # Combine gene names and the log fold change in one data frame
-      reference_log <- cbind("gene"=reference[,ref_gene_column], reference_ratio)
+      reference_log <- cbind("gene"= tolower(reference[,ref_gene_column]), reference_ratio)
       
       
       reference_log
@@ -276,21 +276,21 @@ server <- function(input, output){
           
           
           
-          df$reference_cell_type <- c(rep("pro/pre-B", length(1:9)),
-                                rep("B cell", length(10:24)),
-                                rep("DC", length(25:47)),
-                                rep("pDC", length(48:51)),
-                                rep("Macrophage", length(52:70)),
-                                rep("Monocyte", length(71:78)),
-                                rep("Granulocyte", length(79:84)),
-                                rep("pre-T cell", length(85:93)),
-                                rep("T cell", length(94:126)),
-                                rep("NKT", length(127:133)),
-                                rep("T cell (act)", length(134:149)),
-                                rep("gdT", length(150:171)),
-                                rep("NK cell", length(172:183)),
-                                rep("Epith/Endoth", length(184:196)),
-                                rep("Stem cell", length(197:209)))
+          # df$reference_cell_type <- c(rep("pro/pre-B", length(1:9)),
+          #                       rep("B cell", length(10:24)),
+          #                       rep("DC", length(25:47)),
+          #                       rep("pDC", length(48:51)),
+          #                       rep("Macrophage", length(52:70)),
+          #                       rep("Monocyte", length(71:78)),
+          #                       rep("Granulocyte", length(79:84)),
+          #                       rep("pre-T cell", length(85:93)),
+          #                       rep("T cell", length(94:126)),
+          #                       rep("NKT", length(127:133)),
+          #                       rep("T cell (act)", length(134:149)),
+          #                       rep("gdT", length(150:171)),
+          #                       rep("NK cell", length(172:183)),
+          #                       rep("Epith/Endoth", length(184:196)),
+          #                       rep("Stem cell", length(197:209)))
           
         } else if (input$sel_reference == "Custom" & !is.null(input$annot_file)){
           
@@ -299,7 +299,10 @@ server <- function(input, output){
           
         } else if(input$sel_reference == "Custom" & is.null(input$annot_file)){
           
-          df$reference_cell_type <- rep("NA_reference_cell_type", dim(ref_data())[2]-1)
+          df$reference_cell_type <- rep("Upload annotation file", dim(ref_data())[2]-1)
+          df$short_name <- colnames(ref_data())[!colnames(ref_data()) %in% "gene"]
+          df$long_name <- rep("Upload annotation file", dim(ref_data())[2]-1)
+          df$description <- rep("Upload annotation file", dim(ref_data())[2]-1)
           
         }
         
