@@ -98,7 +98,7 @@ server <- function(input, output){
       
       
       
-      dat <- as_tibble(readRDS("data/til_scseq_exprs_mean.rds"))
+      dat <- readRDS("data/til_scseq_exprs_mean_subset.rds")
       
       req(input$run)
       
@@ -117,17 +117,14 @@ server <- function(input, output){
         need(tools::file_ext(inFile$name) %in% c(
           'text/csv',
           'text/comma-separated-values',
-          'text/tab-separated-values',
           'text/plain',
-          'csv',
-          'tsv'
+          'csv'
         ), "Wrong File Format. File needs to be a .csv file."))
       
 
       
-      dat <- as_tibble(
-        read.csv(inFile$datapath, check.names=TRUE, strip.white = TRUE)
-      )
+      dat <- read.csv(inFile$datapath, check.names=TRUE, strip.white = TRUE, stringsAsFactors = F)
+
       
       # Make sure the column names are proper for correct subsetting
       validate(
@@ -137,7 +134,13 @@ server <- function(input, output){
       )
       )
       
+      
+      
       req(input$run)
+      
+      gene_column <<- grep("gene", colnames(dat), ignore.case = T, value = T)
+      
+      dat[,gene_column] <- tolower(dat[,gene_column])
       
       dat
       
@@ -153,20 +156,26 @@ server <- function(input, output){
     
     if(input$sel_reference == "ImmGen"){
       
-      reference <- as_tibble(readRDS("data/immgen_combined.rds"))
+      reference <- readRDS("data/immgen_combined.rds")
       
-      reference 
+      ref_gene_column <<- grep("gene", colnames(reference), ignore.case = T, value = T)
       
     } else if (input$sel_reference == "Custom"){
       
       in_refFile <- input$ref_file
       
-      reference <- as_tibble(read.csv(in_refFile$datapath, check.names=FALSE, strip.white = TRUE))
+      reference <- read.csv(in_refFile$datapath, check.names=FALSE, strip.white = TRUE, stringsAsFactors = F)
       
-      reference
+      ref_gene_column <<- grep("gene", colnames(reference), ignore.case = T, value = T)
+      
+      reference[,ref_gene_column] <- tolower(reference[,ref_gene_column])
       
       
     } else {NULL}
+    
+    
+    
+    reference
     
     
   })
@@ -179,14 +188,14 @@ server <- function(input, output){
     
     if(input$sel_reference == "ImmGen"){
       
-      ref_annotation <- as_tibble(readRDS("data/imm_annot.rds"))
+      ref_annotation <- readRDS("data/imm_annot.rds")
       ref_annotation
       
     } else if(input$sel_reference == "Custom"){
       
       annotFile <- input$annot_file
       
-      ref_annotation <- as_tibble(read.csv(annotFile$datapath, check.names=FALSE, strip.white = TRUE))
+      ref_annotation <- read.csv(annotFile$datapath, check.names=FALSE, strip.white = TRUE, stringsAsFactors = F)
       ref_annotation
       
     }
@@ -213,12 +222,8 @@ server <- function(input, output){
    # Compare expr_data against reference file
   analyzed_df <- reactive({
     
+
     
-    
-    gene_column <<- grep("gene", colnames(expr_data()), ignore.case = T, value = T)
-    # logFC_column <<- grep("logfc", colnames(expr_data()), ignore.case = T, value = T)
-    # cluster_column <<- grep("cluster", colnames(expr_data()), ignore.case = T, value = T)
-    ref_gene_column <<- grep("gene", colnames(ref_data()), ignore.case = T, value = T)
    
     dat_genes <- expr_data()[gene_column] %>% pull() %>% as.character
     ref_genes <- ref_data()[ref_gene_column] %>% pull() %>% as.character
@@ -228,12 +233,12 @@ server <- function(input, output){
     trim_dat <- expr_data() %>%
       filter(!!rlang::sym(gene_column) %in% common_genes) %>%
       arrange_(.dots=gene_column) %>%
-      select_(.dots = "-gene_column")
+      select_(.dots = paste0("-", gene_column))
     
     trim_ref <- ref_data() %>%
       filter(!!rlang::sym(ref_gene_column) %in% common_genes) %>%
       arrange_(.dots=ref_gene_column) %>%
-      select_(.dots = "-ref_gene_column")
+      select_(.dots = paste0("-", ref_gene_column))
     
     
     
@@ -264,35 +269,7 @@ server <- function(input, output){
           
           
           
-          df$ref_cell_type <- c(rep("pro/pre-B", length(1:9)),
-                                rep("B cell", length(10:24)),
-                                rep("DC", length(25:47)),
-                                rep("pDC", length(48:51)),
-                                rep("Macrophage", length(52:70)),
-                                rep("Monocyte", length(71:78)),
-                                rep("Granulocyte", length(79:84)),
-                                rep("pre-T cell", length(85:93)),
-                                rep("T cell", length(94:126)),
-                                rep("NKT", length(127:133)),
-                                rep("T cell (act)", length(134:149)),
-                                rep("gdT", length(150:171)),
-                                rep("NK cell", length(172:183)),
-                                rep("Stromal/Endoth", length(184:196)),
-                                rep("Stem cell", length(197:209)),
-                                rep("B cell", length(210:211)),
-                                rep("DC", length(212:213)),
-                                rep("Macrophage", length(214:220)),
-                                rep("Monocyte", length(221:225)),
-                                rep("Granulocyte", length(226:226)),
-                                rep("Stromal/Endoth", length(227:243)),
-                                rep("NK cell", length(244:246)),
-                                rep("ILC", length(247:253)),
-                                rep("T cell (act)", length(254:260)),
-                                rep("pre-T cell", length(261:263)),
-                                rep("gdT", length(264:266)),
-                                rep("Eosinophil", length(267:268)),
-                                rep("Mast cell", length(269:274)),
-                                rep("Basophil", length(275:276)))
+          
           
         } else if (input$sel_reference == "Custom" & !is.null(input$annot_file)){
           
@@ -301,7 +278,10 @@ server <- function(input, output){
           
         } else if(input$sel_reference == "Custom" & is.null(input$annot_file)){
           
-          df$ref_cell_type <- rep("NA_ref_cell_type", dim(ref_data())[2]-1)
+          df$reference_cell_type <- rep("Upload annotation file", dim(ref_data())[2]-1)
+          df$short_name <- colnames(ref_data())[!colnames(ref_data()) %in% ref_gene_column]
+          df$long_name <- rep("Upload annotation file", dim(ref_data())[2]-1)
+          df$description <- rep("Upload annotation file", dim(ref_data())[2]-1)
           
         }
         
@@ -391,7 +371,7 @@ server <- function(input, output){
             df_plot_brushed <<- df_plot
             
             p <- ggdotplot(df_plot, x = "reference_id", y="cor_coefficient", 
-                           fill = "ref_cell_type", xlab=F, ylab="Correlation coefficient",
+                           fill = "reference_cell_type", xlab=F, ylab="Correlation coefficient",
                            font.y = c(14, "bold", "black"), size=1, x.text.angle=90,
                            title = paste("Cluster:",my_i), font.title = c(15, "bold.italic"),
                            font.legend = c(15, "plain", "black"))+
@@ -408,7 +388,7 @@ server <- function(input, output){
             
             # Old iteration using ggdotchart function. It reorders X axis.
             # p <- ggdotchart(df_plot, x = "reference_id", y="cor_coefficient", 
-            #                 group = "ref_cell_type", color = "ref_cell_type", xlab=F, ylab="Reference identity score",
+            #                 group = "reference_cell_type", color = "reference_cell_type", xlab=F, ylab="Reference identity score",
             #                 font.y = c(14, "bold", "black"),
             #                 dot.size = 3, title = paste("Cluster:",my_i), font.title = c(15, "bold.italic"),
             #                 font.legend = c(15, "plain", "black"))+
@@ -450,7 +430,7 @@ server <- function(input, output){
   top5_df$index <- 1:nrow(top5_df)
   
   top5_df <- select(top5_df, cluster,
-                    ref_cell_type,
+                    reference_cell_type,
                     reference_id,
                     long_name,
                     description,

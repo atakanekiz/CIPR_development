@@ -92,9 +92,10 @@ server <- function(input, output){
       
       req(input$run)
       
-      as_tibble(read.csv("data/Trimmed_cluster_signatures.csv",
+      dat <- read.csv("data/Trimmed_cluster_signatures.csv",
                          check.names = F,
-                         strip.white = T))
+                         strip.white = T,
+                         stringsAsFactors = F)
       
       
       
@@ -109,17 +110,13 @@ server <- function(input, output){
         need(tools::file_ext(inFile$name) %in% c(
           'text/csv',
           'text/comma-separated-values',
-          'text/tab-separated-values',
           'text/plain',
-          'csv',
-          'tsv'
+          'csv'
         ), "Wrong File Format try again!"))
       
       
       
-      dat <- as_tibble(
-        read.csv(inFile$datapath, check.names=TRUE, strip.white = TRUE)
-      )
+      dat <- read.csv(inFile$datapath, check.names=TRUE, strip.white = TRUE, stringsAsFactors = F)
       
       # Make sure the column names are proper for correct subsetting
       validate(
@@ -129,11 +126,18 @@ server <- function(input, output){
         )
       )
       
-      req(input$run)
-      
-      dat
-      
+
     }
+    
+    gene_column <<- grep("gene", colnames(dat), ignore.case = T, value = T)
+    logFC_column <<- grep("logfc", colnames(dat), ignore.case = T, value = T)
+    cluster_column <<- grep("cluster", colnames(dat), ignore.case = T, value = T)
+    
+    req(input$run)
+    
+    dat[,gene_column] <- tolower(dat[,gene_column])
+    
+    dat
     
   }) # close de_data reactive object
   
@@ -145,20 +149,11 @@ server <- function(input, output){
     
     if(input$sel_reference == "ImmGen"){
       
-      reference <- as_tibble(readRDS("data/immgen_v1.rds"))
+      reference_log <- readRDS("data/immgen_v1_reference_log.rds")
       
-      # Calculate row means for each gene (mean expression across 209 different immgen cell types)
-      gene_avg <- rowMeans(reference[,2:dim(reference)[2]])
+      ref_gene_column <<- grep("gene", colnames(reference_log), ignore.case = T, value = T)
       
-      
-      # Calculate the ratio of gene expression in a given cell type compared 
-      # to the average of the whole cohort. Calculate log (natural) fold change and store it in immgen_dat2
-      reference_ratio <- log(sweep(reference[,2:dim(reference)[2]], 1, FUN="/", gene_avg))
-      
-      
-      # Combine gene names and the log fold change in one data frame
-      reference_log <- cbind(reference[,1], reference_ratio)
-      
+
       reference_log
       
       
@@ -166,12 +161,10 @@ server <- function(input, output){
       
       in_refFile <- input$ref_file
       
-      reference <- as_tibble(read.csv(in_refFile$datapath, check.names=FALSE, strip.white = TRUE))
+      reference <- read.csv(in_refFile$datapath, check.names=FALSE, strip.white = TRUE, stringsAsFactors = F)
       
-      # # Can expand this code here further by allowing the upload of sample annotations to display details of reference samples
-      # reference_annotation <- read.delim("popinfo.txt", header = F)
-      # names(reference_annotation) <- c("Short.Name", "Long.Name", "Details", "Laboratory", "n?", "read?")
-      # reference_annotation <- reference_annotation[,1:3]
+      ref_gene_column <<- grep("gene", colnames(reference), ignore.case = T, value = T)
+      
       
       # Calculate row means for each gene (mean expression across 209 different immgen cell types)
       gene_avg <- rowMeans(reference[,2:dim(reference)[2]])
@@ -183,7 +176,7 @@ server <- function(input, output){
       
       
       # Combine gene names and the log fold change in one data frame
-      reference_log <- cbind(reference[,1], reference_ratio)
+      reference_log <- cbind("gene"=tolower(reference[,ref_gene_column]), reference_ratio)
       
       reference_log
       
@@ -207,7 +200,8 @@ server <- function(input, output){
       
       annotFile <- input$annot_file
       
-      ref_annotation <- as_tibble(read.csv(annotFile$datapath, check.names=FALSE, strip.white = TRUE))
+      ref_annotation <- read.csv(annotFile$datapath, check.names=FALSE, strip.white = TRUE, stringsAsFactors = F)
+      
       ref_annotation
       
     }
@@ -235,14 +229,7 @@ server <- function(input, output){
   # Compare de_data against reference file
   analyzed_df <- reactive({
     
-    
-    
-    gene_column <<- grep("gene", colnames(de_data()), ignore.case = T, value = T)
-    logFC_column <<- grep("logfc", colnames(de_data()), ignore.case = T, value = T)
-    cluster_column <<- grep("cluster", colnames(de_data()), ignore.case = T, value = T)
-    ref_gene_column <<- grep("gene", colnames(ref_data()), ignore.case = T, value = T)
-    
-    
+
     master_df <- data.frame()
     
     withProgress(message = 'Analysis in progress', value = 0, {
@@ -258,7 +245,7 @@ server <- function(input, output){
         
         
         # Merge SCseq cluster log FC value with immgen log FC for shared genes
-        merged <- merge(sel_clst, ref_data(), by.x = gene_column, by.y = ref_gene_column)
+        merged <- merge(sel_clst, ref_data(), by.x = gene_column, by.y = "gene")
         
         
         # Calculate a scoring matrix by multiplying log changes of clusters and immgen cells
@@ -279,22 +266,6 @@ server <- function(input, output){
           
           
           
-          df$ref_cell_type <- c(rep("pro/pre-B", length(1:9)),
-                                rep("B cell", length(10:24)),
-                                rep("DC", length(25:47)),
-                                rep("pDC", length(48:51)),
-                                rep("Macrophage", length(52:70)),
-                                rep("Monocyte", length(71:78)),
-                                rep("Granulocyte", length(79:84)),
-                                rep("pre-T cell", length(85:93)),
-                                rep("T cell", length(94:126)),
-                                rep("NKT", length(127:133)),
-                                rep("T cell (act)", length(134:149)),
-                                rep("gdT", length(150:171)),
-                                rep("NK cell", length(172:183)),
-                                rep("Epith/Endoth", length(184:196)),
-                                rep("Stem cell", length(197:209)))
-          
         } else if (input$sel_reference == "Custom" & !is.null(input$annot_file)){
           
           df <- left_join(df, reference_annotation(), by=c("reference_id" = "short_name"))
@@ -302,7 +273,10 @@ server <- function(input, output){
           
         } else if(input$sel_reference == "Custom" & is.null(input$annot_file)){
           
-          df$ref_cell_type <- rep("NA_ref_cell_type", dim(ref_data())[2]-1)
+          df$reference_cell_type <- rep("Upload annotation file", dim(ref_data())[2]-1)
+          df$short_name <- colnames(ref_data())[!colnames(ref_data()) %in% "gene"]
+          df$long_name <- rep("Upload annotation file", dim(ref_data())[2]-1)
+          df$description <- rep("Upload annotation file", dim(ref_data())[2]-1)
           
         }
         
@@ -413,7 +387,7 @@ server <- function(input, output){
             df_plot_brushed <<- df_plot
             
             p <- ggdotplot(df_plot, x = "reference_id", y="reference_score_sum", 
-                           fill = "ref_cell_type", xlab=F, ylab="Reference identity score",
+                           fill = "reference_cell_type", xlab=F, ylab="Reference identity score",
                            font.y = c(14, "bold", "black"), size=1, x.text.angle=90,
                            title = paste("Cluster:",my_i), font.title = c(15, "bold.italic"),
                            font.legend = c(15, "plain", "black"))+
@@ -430,7 +404,7 @@ server <- function(input, output){
             
             # Old iteration using ggdotchart function. It reorders X axis.
             # p <- ggdotchart(df_plot, x = "reference_id", y="reference_score_sum", 
-            #                 group = "ref_cell_type", color = "ref_cell_type", xlab=F, ylab="Reference identity score",
+            #                 group = "reference_cell_type", color = "reference_cell_type", xlab=F, ylab="Reference identity score",
             #                 font.y = c(14, "bold", "black"),
             #                 dot.size = 3, title = paste("Cluster:",my_i), font.title = c(15, "bold.italic"),
             #                 font.legend = c(15, "plain", "black"))+
@@ -472,7 +446,7 @@ server <- function(input, output){
     top5_df$index <- 1:nrow(top5_df)
     
     top5_df <- select(top5_df, cluster,
-                      ref_cell_type,
+                      reference_cell_type,
                       reference_id,
                       long_name,
                       description,
