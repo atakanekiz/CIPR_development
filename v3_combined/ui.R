@@ -4,16 +4,16 @@ ui <- fluidPage(
   
   # tags$head(tags$style(".down_but{background-color:#39F407;} .down_but{color:#14150F;}")), THIS ALSO WORKS TO CONDITIONALLY SHOW DOWNLOAD BUTTON
   
-  tags$head(includeHTML(("data/google_analytics_v2.html"))),
+  tags$head(includeHTML(("data/google_analytics_v3.html"))),
   
-  titlePanel(title=div(img(src="cipr_logo_small.png"), "Cluster identity predictor (v2)"), windowTitle = "CIPR"),
+  titlePanel(title=div(img(src="cipr_logo_small.png"), "Cluster identity predictor (v3)"), windowTitle = "CIPR"),
   
   sidebarLayout(
     
     sidebarPanel(width = 2,
                  
                  # Cluster markers (Diff exp analysis, columns must have "gene", "avg_logFC", and "cluster" data)
-                 fileInput("expr_file", "Upload cluster diff. exp. data",
+                 fileInput("data_file", "Upload cluster diff. exp. data",
                            multiple = F,
                            accept = c("text/csv",
                                       "text/comma-separated-values,text/plain",
@@ -45,8 +45,8 @@ ui <- fluidPage(
                  
                  radioButtons("comp_method", 
                               label = "Select method for comparisons", 
-                              choices = c("Spearman", "Pearson", "logFC SoM"), 
-                              selected = "Spearman"), 
+                              choices = c("logFC SoM", "Spearman", "Pearson"), 
+                              selected = "logFC SoM"), 
                  
                  # horizontal line
                  tags$hr(), 
