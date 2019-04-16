@@ -727,7 +727,7 @@ server <- function(input, output){
       top5_df <- analyzed_df() %>%
         group_by(cluster) %>%    #cluster
         top_n(5, wt = reference_score_sum) %>%
-        arrange(cluster, desc(reference_score_sum))
+        arrange(as.numeric(cluster), desc(reference_score_sum))
       
       
       ordered_cluster_levels <- gtools::mixedsort(levels(as.factor(top5_df$cluster)))
@@ -760,7 +760,7 @@ server <- function(input, output){
     top5_df <- analyzed_df() %>%
       group_by(cluster) %>%    #cluster
       top_n(5, wt = cor_coefficient) %>%
-      arrange(cluster, desc(cor_coefficient))
+      arrange(as.numeric(cluster), desc(cor_coefficient))
     
     
     ordered_cluster_levels <- gtools::mixedsort(levels(as.factor(top5_df$cluster)))
