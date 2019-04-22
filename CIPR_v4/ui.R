@@ -114,23 +114,22 @@ ui <- fluidPage(
         tabPanel("How to use this program",
                  
                  h3("Summary"),
-                 p("Understanding the biological identity of cell clusters in single cell RNA sequencing (SCseq) experiments can be challenging due to overlapping gene expression profiles. An accurate assessment of the cluster identity requires analyzing multiple differentially expressed genes as opposed to a low throughput approach of examining a few selected lineage-specific markers. Cluster Identity PRedictor (CIPR) compares user-provided SCseq cluster gene signatures with", a('Immunological Genome Project (ImmGen)', href= 'https://www.immgen.org'), "mouse immune cell datasets -- or with a user-provided reference dataset --, and calculates an", strong('identity score (IS)'), "for each SCseq cluster per reference cell subset. To calculate the IS, this version of CIPR can use three different methods: 1) Log fold-change comparison, 2) Spearman's correlation, and 3) Pearsons's correlation. For further information, please read the sections below"),
+                 p("Understanding the biological identity of cell clusters in single cell RNA sequencing (SCseq) experiments can be challenging due to overlapping gene expression profiles. An accurate assessment of the cluster identity requires analyzing multiple differentially expressed genes as opposed to a low throughput approach of examining a few selected lineage-specific markers. Cluster Identity PRedictor (CIPR) compares user-provided SCseq cluster gene signatures with", a('Immunological Genome Project (ImmGen)', href= 'https://www.immgen.org'), "mouse immune cell datasets -- or with a user-provided reference dataset --, and calculates an", strong('identity score (IS)'), "for each SCseq cluster per reference cell subset. To calculate the IS, CIPR compares differential gene expression signatures of unknown clusters to that of known reference samples using three different methods: 1) Log fold-change comparison (dot product), 2) Spearman's correlation, and 3) Pearsons's correlation. For further information, please read the sections below"),
                  
                  br(),br(),
                  
                  h3("Quick Start"),
                  
-                 p(strong(span(style="color:green", "To compare your SCseq clusters against ImmGen cell types, simply upload the per cluster expression signatures and click 'Analyze'"))),
+                 p(strong(span(style="color:green", "To compare your SCseq clusters against ImmGen cell types, simply upload the cluster gene expression signatures and click 'Analyze'"))),
                  br(),
                  p(strong(span(style="color:blue", "If you'd like to compare SCseq data with a custom reference, please select the appropriate radio button and upload reference gene expression data"))),
                  br(),
-                 p(strong(span(style="color:gray", "You can also run the program by using example data that our lab has generated (Ekiz HA and Huffaker TB, JCI Insight, 2019). This data were obtained by single cell transcriptomics analysis of flow-sorted murine tumor-infiltrating immune cells. Example gene expression data on this website is shortened to reduce computing times. In this example dataset, gene signatures of 4 clusters (Activated T cells, natural killer cells, Langerhans dendritic cells, and plasmacytoid dendritic cells) are included, whereas the original dataset had 15 distinct cell clusters based on our analysis."))),
+                 p(strong(span(style="color:gray", "You can also run the program by using example data that our lab has generated (Ekiz HA and Huffaker TB, JCI Insight, 2019). This data were obtained by single cell transcriptomics analysis of flow-sorted murine tumor-infiltrating immune cells. Example gene expression data on this website is shortened to reduce computing times. In this example dataset, gene signatures of 4 clusters (activated T cells, natural killer cells, Langerhans dendritic cells, and plasmacytoid dendritic cells) are included, whereas the original dataset had 15 distinct cell clusters based on our analysis."))),
                  
                  br(),br(),
                  
                  
                  h3("Input data"),
-                 h4("If logFC comparison method is to be used:"),
                  tags$ul(
                    tags$li("Provide the expression data from SCseq cell clusters as a csv file."),
                    tags$li("This file", strong("must have at least three columns named Gene, logFC, and cluster"), ". Capitalization does not matter and extra characters before or after these column names are also allowed. The other columns are ignored."),
@@ -142,40 +141,28 @@ ui <- fluidPage(
                  p(strong("Sample SCseq expression data (generated via Seurat's FindAllMarkers() function)")),
                  imageOutput("sample_data_file_logfc"),
                  
-                 h4("If correlation methods are to be used:"),
-                 tags$ul(
-                   tags$li("Provide the expression data from SCseq cell clusters as a csv file."),
-                   tags$li("This file", strong("must have a column named Gene."), "Capitalization does not matter and extra characters before or after these column names are also allowed"),
-                   tags$li("The rest of the columns should list averaged normalized expression data for each cluster. These columns should be named using the cluster names from the experiment (e.g. Cluster_1, Arg1_pos_myeloid). To create plots with correct titles, avoid using spaces and special characters as column names. Underscores and abbreviations such as 'pos' or 'neg' would work fine."),
-                   tags$li("This data frame can be generated by the help of popular R packages using Seurat, dplyr, and data.table. Please see the example code below to generate such a data frame from your data.")
-                   
-                 ),
-                 br(),
-                 p(strong("Sample SCseq expression data (generated via Seurat)")),
-                 imageOutput("sample_data_file_cor"),
-                 
-                 
                  
                  h3("About reference dataset"),
                  tags$ul(
-                   tags$li("This program is pre-loaded with ImmGen microarray data for easily investigating immune cells in SCseq experiments"),
-                   tags$li("If one would like to provide a custom reference dataset, any number of highthroughput data types can be used including microarray, RNAseq, and proteomics data. Reference datasets in which distinct samples are normalized together are preferred, although Spearman's correlation method should not be affected by the variation introduced by using different normalization methods across reference data."),
-                   tags$li("Custom reference datasets can be uploaded as a csv file and should contain gene expression data from known cell types"),
-                   tags$li("Reference dataset should have genes in rows and cell types in columns"),
-                   tags$li("The first column of the reference data frame must have gene names and must be named as", strong("Gene."), "Capitalization does not matter and characters before and after 'gene' is allowed"),
-                   tags$li("This file can contain biological and technical replicates. In this case, IS is calculated and plotted for each replicate separately")
+                   tags$li("This program is pre-loaded with ImmGen microarray data for easily investigating immune cell clusters in SCseq experiments."),
+                   tags$li("If one would like to provide a custom reference dataset, any number of highthroughput data types can be used including microarray, RNAseq, and proteomics data, as long as data in the reference file are normalized together."),
+                   tags$li("Reference data should be in linear space."),
+                   tags$li("Custom reference datasets can be uploaded as a csv file and should contain gene expression data from known cell types."),
+                   tags$li("Reference dataset should have genes in rows and cell types in columns."),
+                   tags$li("The first column of the reference data frame must have gene names (e.g. Pdcd1, Tnfa) and must be named as", strong("Gene."), "Capitalization does not matter and characters before and after 'gene' are allowed."),
+                   tags$li("This file can contain biological and technical replicates. In this case, IS is calculated and plotted for each replicate separately.")
                  ),
                  br(),
                  p(strong("Sample reference gene expression data")),
                  imageOutput("sample_reference_file"),
                  
                  
-                 h3("About (optional) reference annotation data"),
+                 h3("About (optional) custom reference annotation data"),
                  tags$ul(
-                   tags$li("If a custom reference dataset is used, although not necessary, an annotation file (in csv format) can be uploaded to obtain more informative plots"),
+                   tags$li("If a custom reference dataset is used, although not necessary, an annotation file (in csv format) can be uploaded to obtain more informative plots."),
                    tags$li(strong("Annotation file must contain the columns named as 'short_name', 'long_name', 'description', and 'reference_cell_type'.")),
                    tags$li(strong("Data under 'short_name' column must EXACTLY match the column names of the reference gene expression data.")),
-                   tags$li("Annotation file can have other columns as well, which will be shown as a tabular format along with other columns after calculations")
+                   tags$li("Annotation file can have other columns as well, which will be ignored.")
                  ),
                  br(),br(),
                  p(strong("Sample reference annotation data")),
@@ -189,13 +176,13 @@ ui <- fluidPage(
                  h5(strong("Pre-processing of reference dataset")),
                  tags$ul(
                    tags$li("The algorithm uses pre-loaded ImmGen signatures or a user-uploaded reference expression file (see below for the details of reference file format)."),
-                   tags$li("The reference expression file should contain normalized gene expression values (microarray or RNAseq) in rows and cell types in columns."),
+                   tags$li("The reference expression file should contain normalized gene expression values in linear space  in rows and cell types in columns. Reference data can be derived from high-throughput experiments such as microarray or RNAseq."),
                    tags$li("For each gene found in the reference file, algorithm calculates the ratio of gene expression in each cell type (i.e. individual columns) to the average gene expression value of the whole data set (i.e. all columns)."),
-                   tags$li("Ratio is log transformed to obtain positive values indicating upregulation and negative values indicating downregulation . Therefore, pre-processing of the reference file results in a data frame that features logFC values of each gene for each cell type.")
+                   tags$li("Ratio is log transformed to obtain positive values indicating upregulation and negative values indicating downregulation in the specific cell type. Therefore, pre-processing of the reference file results in a data frame that features logFC values of each gene for each cell type.")
                  ),
                  h5(strong("Analysis of experimental cluster signatures against reference file")),
                  tags$ul(
-                   tags$li("Uploaded cluster signature file should contain information about genes, logFC in expression levels and the cluster information (see below for allowed file format)."),
+                   tags$li("Uploaded cluster signature file should contain information about genes, logFC in expression levels and the cluster information (see below for the correct file format)."),
                    tags$li("Algorithm finds the common genes between experimental data and the reference dataset."),
                    tags$li("For each shared gene, logFC values of differentially expressed in clusters and are multiplied with the logFC values in the reference dataset. This way if a gene is upregulated or downregulated in both a given cluster and a cell type in the reference dataset (i.e. positive correlation), the multiplication will result in a positive number (i.e. multiplication of two positive or two negative numbers resulting in a positive number). Alternatively, if a gene is differentially regulated in opposite directions in cluster and reference cell type (i.e. negative correlation), multiplication of logFC values will result in a negative number."),
                    tags$li("Multiplied logFC values per each gene are added up, resulting in an aggregate IS across the dataset for each cluster in the experimental data. This way, genes that have similar expression patterns in the experimental cell cluster and the reference cell type contribute to a higher IS, whereas genes with opposite expression patterns will result in a lower IS."),
@@ -324,10 +311,10 @@ write.csv(exprs, 'avg_exprs_per_cluster.csv')
          "),
      
 
-                 h3("CIPR Release v3"),
+                 h3("CIPR Release v4"),
         tags$ul(
-          tags$li("Three different computational methods (logFC comparison, Spearman's and Pearson's correlation can now be used in the same user interface"),
-          tags$li("ImmGen v1 and v2 data are combined pre-loaded as the reference. These two datasets contain partially overlapping cell types, and were generated using the same microarray platform (Affymetrix MoGene ST1.0 array). However, due to technical reasons, v1 and v2 data were normalized individually using RMA method per chip.")
+          tags$li("Three different computational methods comparing differential expression data (logFC comparison, Spearman's and Pearson's correlation can now be used in the same user interface"),
+          tags$li("ImmGen v1 and v2 data are renormalized from raw data files (.CEL), combined and pre-loaded as the reference. These two datasets contain partially overlapping cell types, and were generated using the same microarray platform (Affymetrix MoGene ST1.0 array). For further information please see ImmGen website and associated publications.")
         ),
                  
                  

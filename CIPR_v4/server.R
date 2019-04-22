@@ -52,15 +52,6 @@ server <- function(input, output){
     }
   })
   
-  # Show example input file format for correlation method
-  output$sample_data_file_cor <- renderImage({
-    
-    list(src = "data/cluster_expr_IMG_cor.png",
-         alt = "Sample SCseq data",
-         width=500)
-    
-  }, deleteFile = F)
-  
   
   # Show example input file format for logFC comparison method
   output$sample_data_file_logfc <- renderImage({
@@ -95,8 +86,6 @@ server <- function(input, output){
     
     inFile <- input$data_file
     
-    if(input$comp_method == "logFC comparison"){
-      
       if(is.null(inFile) & input$example_data == T){
         
         
@@ -133,7 +122,7 @@ server <- function(input, output){
         validate(
           need(
             {if(sum(Reduce("|", lapply(c("logfc", "gene", "cluster"), grepl, colnames(dat), ignore.case=T))) == 3) TRUE else FALSE},
-            "Formatting error: If using 'logFC comparison' method, make sure your dataset contains at least three columns named 'logfc', 'gene', and 'cluster' (Capitalization of the column names is not important, but duplicate names are not allowed)"
+            "Formatting error: Make sure your dataset contains at least three columns named 'logfc', 'gene', and 'cluster' (Capitalization of the column names is not important, but duplicate names are not allowed. Data can have other columns which will be ignored)"
           )
         )
         
@@ -151,64 +140,7 @@ server <- function(input, output){
       
       dat
       
-    } else {
-    
-    
-    
-    if(is.null(inFile) & input$example_data == T){
-      
-      
-      # Example data. Trimmed data with 4 clusters (Ekiz HA and Huffaker TB, JCI Insight, 2019)
-      dat <- readRDS("data/til_scseq_exprs_mean_subset.rds")
-      
-      req(input$run)
-      
-      dat
-      
-      
-      
-    } else {
-      
-      validate(
-        need(input$data_file != "", "Please upload a data set or use example data")
-      )
-      
-      # Make sure the file type is correct
-      validate(
-        need(tools::file_ext(inFile$name) %in% c(
-          'text/csv',
-          'text/comma-separated-values',
-          'text/plain',
-          'csv'
-        ), "Wrong File Format. File needs to be a .csv file."))
-      
-      
-      
-      dat <- read.csv(inFile$datapath, check.names=TRUE, strip.white = TRUE, stringsAsFactors = F)
-      
-      
-      # Make sure the column names are proper for correct subsetting. Complain if expected column names can't be found
-      validate(
-        need(
-          {if(sum(Reduce("|", lapply(c("logfc", "gene"), grepl, colnames(dat), ignore.case=T))) == 1) TRUE else FALSE},
-          "Formatting error: If using correlation methods, make sure your dataset contains a column named 'gene' (capitalization is not important, duplicate gene column is not allowed). Other columns should feature the genes."
-        )
-      )
-      
-      
-      
-      req(input$run)
-      
-      # Name of the gene column in the uploaded data
-      gene_column <<- grep("gene", colnames(dat), ignore.case = T, value = T)
-      
-      dat[,gene_column] <- tolower(dat[,gene_column])
-      
-      dat
-      
-    }
-    }
-    
+  
   }) # close user_data reactive object
   
   
@@ -217,17 +149,15 @@ server <- function(input, output){
   
   ref_data <- reactive({
     
-    if(input$comp_method == "logFC comparison"){
-      
-      
-      
+
       if(input$sel_reference == "ImmGen"){
         
         # Calculated from immgen data by taking the ratio of gene expression per cluster to the overall average
         # and log transforming these values. This object is prepared separately to reduce compute time here
         #..........#        
         # reference_log <- readRDS("data/immgen_combined_reference_log.rds")
-        reference_log <- readRDS("data/immgen_combined_renorm_ref_log.rds")
+        # reference_log <- readRDS("data/immgen_combined_renorm_ref_log.rds")
+        reference_log <- readRDS("data/immgen_recalc_ratio.rds")
         
         # Name of the gene column in reference data
         ref_gene_column <<- grep("gene", colnames(reference_log), ignore.case = T, value = T)
@@ -236,7 +166,7 @@ server <- function(input, output){
         reference_log
         
         
-      } else if (input$sel_reference == "Custom"){
+      } else {
         
         validate(
           need(input$ref_file != "", "Please upload reference data set")
@@ -274,46 +204,8 @@ server <- function(input, output){
         # return this data frame to reactive object
         reference_log
         
-      } else {NULL}
+      }
       
-      
-      
-      
-    } else{
-      
-      if(input$sel_reference == "ImmGen"){
-        
-        # Pre normalized data was downloaded from ImmGen and v1 and v2 releases were combined
-        
-        #........#
-        #reference <- readRDS("data/immgen_combined.rds")
-        
-        reference <- readRDS("data/immgen_renorm.rds")
-        
-        # name of the gene column in reference dataset
-        ref_gene_column <<- grep("gene", colnames(reference), ignore.case = T, value = T)
-        
-      } else if (input$sel_reference == "Custom"){
-        
-        in_refFile <- input$ref_file
-        
-        reference <- read.csv(in_refFile$datapath, check.names=FALSE, strip.white = TRUE, stringsAsFactors = F)
-        
-        ref_gene_column <<- grep("gene", colnames(reference), ignore.case = T, value = T)
-        
-        # convert the reference gene symbols to lowercase to allow human-vs-mouse comparisons
-        reference[,ref_gene_column] <- tolower(reference[,ref_gene_column])
-        
-        
-      } else {NULL}
-      
-      
-      # Return reference data frame as reactive object
-      reference
-      
-      
-    }
-    
     
     
   })
@@ -329,7 +221,8 @@ server <- function(input, output){
       # This file was obtained from the ImmGen website source code that runs the analysis modules.
       # It features detailed information about the cellular origins and sorting methods and makes the results
       # understandable by providing long names and descriptions to abbreviated cell types
-      ref_annotation <- readRDS("data/imm_annot.rds")
+      # ref_annotation <- readRDS("data/imm_annot.rds")
+      ref_annotation <-readRDS("data/immgen_annot.rds")
       ref_annotation
       
     } else if(input$sel_reference == "Custom"){
@@ -346,8 +239,7 @@ server <- function(input, output){
   # Define a reactive cluster object that will store cluster information
   clusters <- reactive({
     
-    if(input$comp_method == "logFC comparison"){
-      
+ 
       # Get the clusters and sort them in incrementing order from cluster column
       # This is needed to generate results per cluster
       gtools::mixedsort(
@@ -358,18 +250,7 @@ server <- function(input, output){
           )
         )
       )
-      
-      
-    } else {
-      
-      # In correlation method, cluster names are stored as column names.
-      gtools::mixedsort(
-      levels(
-        as.factor(
-          colnames(user_data())[!grepl("gene", colnames(user_data()), ignore.case = T)]
-        )
-      )
-    )}
+ 
     
     
     
@@ -491,27 +372,8 @@ server <- function(input, output){
       
       # If correlation method is used, algorithm follows the steps below to calculate a
       # correlation coefficient for each cluster and reference cell type pairs.
-    } else{ 
-      
-      # Find common genes for calculating correlations
-      dat_genes <- user_data()[gene_column] %>% pull() %>% as.character
-      ref_genes <- ref_data()[ref_gene_column] %>% pull() %>% as.character
-      
-      common_genes <- intersect(dat_genes, ref_genes)
-      
-      # Subset the data frames using common genes
-      # Arrange the genes using gene names for 1-to-1 vectoral comparisons
-      # Discard gene column to obtain constitent numerical gene expression values
-      trim_dat <- user_data() %>%
-        filter(!!rlang::sym(gene_column) %in% common_genes) %>%
-        arrange_(.dots=gene_column) %>%
-        select_(.dots = paste0("-", gene_column))
-      
-      trim_ref <- ref_data() %>%
-        filter(!!rlang::sym(ref_gene_column) %in% common_genes) %>%
-        arrange_(.dots=ref_gene_column) %>%
-        select_(.dots = paste0("-", ref_gene_column))
-      
+    
+      } else{    ################### Correlation methods ###########################################################
       
       # Initiate master data frame to store results
       master_df <- data.frame()
@@ -529,9 +391,30 @@ server <- function(input, output){
           # Increment the progress bar, and update the detail text.
           incProgress(1/length(clusters()), detail = paste("Analyzing cluster", i))
           
+          trim_dat <- user_data() %>%
+            filter(!!rlang::sym(cluster_column) == i)
+          
+          dat_genes <- trim_dat[gene_column] %>% pull() %>% as.character
+          ref_genes <- ref_data()[ref_gene_column] %>% pull() %>% as.character
+          
+          common_genes <- intersect(dat_genes, ref_genes)
+          
+          
+          trim_dat <- trim_dat %>%
+            filter(!!rlang::sym(gene_column) %in% common_genes) %>%
+            arrange(!!rlang::sym(gene_column)) %>%
+            select(- !!rlang::sym(gene_column))
+          
+          
+          trim_ref <- ref_data() %>%
+            filter(!!rlang::sym(ref_gene_column) %in% common_genes) %>%
+            arrange(!!rlang::sym(ref_gene_column)) %>%
+            select(- !!rlang::sym(ref_gene_column))
+          
+          
           # Calculate correlation between the the cluster (single column in trimmed input data) and each of the
           # reference cell subsets (columns of the trimmed reference data)
-          cor_df <- cor(trim_dat[i], trim_ref, method = comp_method)
+          cor_df <- cor(trim_dat[logFC_column], trim_ref, method = comp_method)
           
           # Store results in a data frame
           df <- data.frame(identity_score = cor_df[1,])
