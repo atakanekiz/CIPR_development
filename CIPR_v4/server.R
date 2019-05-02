@@ -53,7 +53,7 @@ server <- function(input, output){
   })
   
   
-  # Show example input file format for logFC comparison method
+  # Show example input file format for logFC dot product method
   output$sample_data_file_logfc <- renderImage({
     
     list(src = "data/cluster_expr_IMG_logfc.png",
@@ -263,7 +263,7 @@ server <- function(input, output){
   analyzed_df <- reactive({
     
     
-    if(input$comp_method == "logFC comparison"){
+    if(input$comp_method == "logFC dot product"){
       
       # Initiate a master data frame to store the results
       master_df <- data.frame()
@@ -458,6 +458,7 @@ server <- function(input, output){
           # Calculate the distance of the identity score from population mean (how many std devs apart?)
           df$z_score <- (df$identity_score - mean_cor_coeff)/cor_coeff_sd
           
+               
           # Add all the results to the master data frame
           master_df <- rbind(master_df,df)
           
@@ -505,7 +506,7 @@ server <- function(input, output){
   
   observe({
     
-    if(input$comp_method == "logFC comparison"){
+    if(input$comp_method == "logFC dot product"){
       
       
       
@@ -629,22 +630,17 @@ server <- function(input, output){
   
   top_df <- reactive({
     
-    if(input$comp_method == "logFC comparison"){
+    if(input$comp_method == "logFC dot product"){
       
       
       
       # Extract top5 hits from the reuslts
       top5_df <- analyzed_df() %>%
-        group_by(cluster) %>%    #cluster
-        top_n(5, wt = identity_score) %>%
-        arrange(as.numeric(cluster), desc(identity_score))
-      
-      
-      # Order clusters levels for ordered plotting
-      ordered_cluster_levels <- gtools::mixedsort(levels(as.factor(top5_df$cluster)))
-      
-      
-      top5_df$cluster <- factor(top5_df$cluster, levels = ordered_cluster_levels)
+        mutate(cluster = factor(cluster, levels = mixedsort(levels(as.factor(cluster))))) %>%
+        arrange(cluster, desc(identity_score)) %>%
+        group_by(cluster) %>%
+        top_n(5, wt = identity_score)
+
       
       # Index variable helps keeping the results for clusters separate and helps ordered outputs
       top5_df$index <- 1:nrow(top5_df)
@@ -670,17 +666,13 @@ server <- function(input, output){
     
     
     top5_df <- analyzed_df() %>%
-      group_by(cluster) %>%    #cluster
-      top_n(5, wt = identity_score) %>%
-      arrange(as.numeric(cluster), desc(identity_score))
+      mutate(cluster = factor(cluster, levels = mixedsort(levels(as.factor(cluster))))) %>%
+      arrange(cluster, desc(identity_score)) %>%
+      group_by(cluster) %>%
+      top_n(5, wt = identity_score)
     
     
-    ordered_cluster_levels <- gtools::mixedsort(levels(as.factor(top5_df$cluster)))
-    
-    
-    top5_df$cluster <- factor(top5_df$cluster, levels = ordered_cluster_levels)
-    
-    
+
     top5_df$index <- 1:nrow(top5_df)
     
     top5_df <- select(top5_df, cluster,
@@ -704,7 +696,7 @@ server <- function(input, output){
   output$top5 <- renderPlot({
     
     
-    if(input$comp_method == "logFC comparison"){
+    if(input$comp_method == "logFC dot product"){
       
       
       top_plot <- top_df()
