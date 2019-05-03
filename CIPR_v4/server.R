@@ -154,9 +154,7 @@ server <- function(input, output){
         
         # Calculated from immgen data by taking the ratio of gene expression per cluster to the overall average
         # and log transforming these values. This object is prepared separately to reduce compute time here
-        #..........#        
-        # reference_log <- readRDS("data/immgen_combined_reference_log.rds")
-        # reference_log <- readRDS("data/immgen_combined_renorm_ref_log.rds")
+
         reference_log <- readRDS("data/immgen_recalc_ratio.rds")
         
         # Name of the gene column in reference data
@@ -221,7 +219,6 @@ server <- function(input, output){
       # This file was obtained from the ImmGen website source code that runs the analysis modules.
       # It features detailed information about the cellular origins and sorting methods and makes the results
       # understandable by providing long names and descriptions to abbreviated cell types
-      # ref_annotation <- readRDS("data/imm_annot.rds")
       ref_annotation <-readRDS("data/immgen_annot.rds")
       ref_annotation
       

@@ -2,7 +2,7 @@ ui <- fluidPage(
   
   shinyjs::useShinyjs(), # needed for download button to work
   
-  tags$head(includeHTML(("data/google_analytics_v3.html"))), # To track user experience
+  tags$head(includeHTML(("data/google_analytics.html"))), # To track user experience
   
   titlePanel(title=div(img(src="cipr_logo_small.png"), "Cluster identity predictor"), windowTitle = "CIPR"),
   
@@ -172,7 +172,7 @@ ui <- fluidPage(
                  
                  
                  h3("How is cell identity score calculated?"),
-                 p("CIPR can use one of three calculation approaches: 1) Log fold change comparison (dot product), 2) Spearman correlation, 3) Pearson correlation"),
+                 p("CIPR can use one of three calculation approaches: 1) Log fold change comparison (dot product), 2) Spearman's correlation, 3) Pearson's correlation"),
                  br(),
                  
                  h4(strong("If logFC dot product method is used:")),
