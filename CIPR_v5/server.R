@@ -1,4 +1,4 @@
-# v4 ====> use only differentially expressed genes in correlation calculations. Calculate correlation between logFC of unk cluster vs logFC of reference cells
+# v5 ====> copied from v4 and v3
 # setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
 server <- function(input, output){
@@ -86,6 +86,8 @@ server <- function(input, output){
     
     inFile <- input$data_file
     
+    if(grepl("logFC", input$comp_method)){
+    
       if(is.null(inFile) & input$example_data == T){
         
         
@@ -140,6 +142,63 @@ server <- function(input, output){
       
       dat
       
+    } else {
+      
+      
+      
+      if(is.null(inFile) & input$example_data == T){
+        
+        
+        
+        dat <- readRDS("data/til_scseq_exprs_mean_subset.rds")
+        
+        req(input$run)
+        
+        dat
+        
+        
+        
+      } else {
+        
+        validate(
+          need(input$data_file != "", "Please upload a data set or use example data")
+        )
+        
+        # Make sure the file type is correct
+        validate(
+          need(tools::file_ext(inFile$name) %in% c(
+            'text/csv',
+            'text/comma-separated-values',
+            'text/plain',
+            'csv'
+          ), "Wrong File Format. File needs to be a .csv file."))
+        
+        
+        
+        dat <- read.csv(inFile$datapath, check.names=TRUE, strip.white = TRUE, stringsAsFactors = F)
+        
+        
+        # Make sure the column names are proper for correct subsetting
+        validate(
+          need(
+            {if(sum(Reduce("|", lapply(c("logfc", "gene"), grepl, colnames(dat), ignore.case=T))) == 1) TRUE else FALSE},
+            "Formatting error: Make sure your dataset contains a column named 'gene' (capitalization is not important, duplicate gene column is not allowed). Other columns should feature the genes."
+          )
+        )
+        
+        
+        
+        req(input$run)
+        
+        gene_column <<- grep("gene", colnames(dat), ignore.case = T, value = T)
+        
+        dat[,gene_column] <- tolower(dat[,gene_column])
+        
+        dat
+        
+      }
+    }
+      
   
   }) # close user_data reactive object
   
@@ -148,6 +207,8 @@ server <- function(input, output){
   # Read reference dataset
   
   ref_data <- reactive({
+    
+    if(grepl("logFC", input$comp_method)){
     
 
       if(input$sel_reference == "ImmGen"){
@@ -204,7 +265,31 @@ server <- function(input, output){
         
       }
       
-    
+    } else {
+      
+      if(input$sel_reference == "ImmGen"){
+        
+        reference <- readRDS("data/immgen.rds")
+        
+        ref_gene_column <<- grep("gene", colnames(reference), ignore.case = T, value = T)
+        
+      } else if (input$sel_reference == "Custom"){
+        
+        in_refFile <- input$ref_file
+        
+        reference <- read.csv(in_refFile$datapath, check.names=FALSE, strip.white = TRUE, stringsAsFactors = F)
+        
+        ref_gene_column <<- grep("gene", colnames(reference), ignore.case = T, value = T)
+        
+        reference[,ref_gene_column] <- tolower(reference[,ref_gene_column])
+        
+        
+      } 
+      
+      reference
+      
+      
+    }
     
   })
   
@@ -236,6 +321,8 @@ server <- function(input, output){
   # Define a reactive cluster object that will store cluster information
   clusters <- reactive({
     
+    if(grepl("logFC", input$comp_method)){
+    
  
       # Get the clusters and sort them in incrementing order from cluster column
       # This is needed to generate results per cluster
@@ -248,7 +335,15 @@ server <- function(input, output){
         )
       )
  
-    
+    } else {
+      
+      gtools::mixedsort(
+        levels(
+          as.factor(
+            colnames(user_data())[!grepl("gene", colnames(user_data()), ignore.case = T)]
+          )
+        )
+      )}
     
     
   }) # close clusters reactive object
@@ -258,6 +353,8 @@ server <- function(input, output){
   ################################################################################################################################
   # Compare user_data against reference file
   analyzed_df <- reactive({
+    
+    if(grepl("logFC", input$comp_method)){
     
     
     if(input$comp_method == "logFC dot product"){
@@ -370,7 +467,7 @@ server <- function(input, output){
       # If correlation method is used, algorithm follows the steps below to calculate a
       # correlation coefficient for each cluster and reference cell type pairs.
     
-      } else{    ################### Correlation methods ###########################################################
+      } else {    ################### Correlation methods ###########################################################
       
       # Initiate master data frame to store results
       master_df <- data.frame()
@@ -379,7 +476,7 @@ server <- function(input, output){
       withProgress(message = 'Analysis in progress', value = 0, {
         
         # Pass comp_method variable from the user-selected radio buttons
-        if(input$comp_method == "Spearman") comp_method = "spearman" else comp_method = "pearson"
+        if(input$comp_method == "logFC Spearman") comp_method = "spearman" else if(input$comp_method == "logFC Pearson") comp_method = "pearson"
         
         # Iterate analysis for each cluster. The loop below will calculate a distinct correlation
         # coefficient for each cluster-reference cell pairs 
@@ -468,7 +565,93 @@ server <- function(input, output){
       master_df  
     }
     
+    } else { 
       
+      dat_genes <- user_data()[gene_column] %>% pull() %>% as.character
+      ref_genes <- ref_data()[ref_gene_column] %>% pull() %>% as.character
+      
+      common_genes <- intersect(dat_genes, ref_genes)
+      
+      trim_dat <- user_data() %>%
+        filter(!!rlang::sym(gene_column) %in% common_genes) %>%
+        arrange_(.dots=gene_column) %>%
+        select_(.dots = paste0("-", gene_column))
+      
+      trim_ref <- ref_data() %>%
+        filter(!!rlang::sym(ref_gene_column) %in% common_genes) %>%
+        arrange_(.dots=ref_gene_column) %>%
+        select_(.dots = paste0("-", ref_gene_column))
+      
+      
+      
+      master_df <- data.frame()
+      
+      withProgress(message = 'Analysis in progress', value = 0, {
+        
+        if(input$comp_method == "Spearman (all genes)") comp_method = "spearman" else if(input$comp_method == "Pearson (all genes)") comp_method = "pearson"
+        
+        for (i in clusters()) {
+          
+          # Increment the progress bar, and update the detail text.
+          incProgress(1/length(clusters()), detail = paste("Analyzing cluster", i))
+          
+          
+          cor_df <- cor(trim_dat[i], trim_ref, method = comp_method)
+          
+          
+          df <- data.frame(identity_score = cor_df[1,])
+          
+          df <- rownames_to_column(df, var="reference_id")
+          
+          # FIX THIS LATER AFTER UPDATING THE IMMGEN/CUSTOM REFERENCE UPLOADING CODE ABOVE SECTION
+          
+          if(input$sel_reference == "ImmGen"){
+            
+            df <- left_join(df, reference_annotation(), by=c("reference_id" = "short_name"))
+            
+            
+            
+            
+            
+          } else if (input$sel_reference == "Custom" & !is.null(input$annot_file)){
+            
+            df <- left_join(df, reference_annotation(), by=c("reference_id" = "short_name"))
+            
+            
+          } else if(input$sel_reference == "Custom" & is.null(input$annot_file)){
+            
+            df$reference_cell_type <- rep("Upload annotation file", dim(ref_data())[2]-1)
+            df$short_name <- colnames(ref_data())[!colnames(ref_data()) %in% ref_gene_column]
+            df$long_name <- rep("Upload annotation file", dim(ref_data())[2]-1)
+            df$description <- rep("Upload annotation file", dim(ref_data())[2]-1)
+            
+          }
+          
+          
+          
+          
+          df$cluster <- i
+          
+          # Add confidence-of-prediction calculations here and append to the df
+          # Calculate the mean and standard deviation of the aggregate scores per reference cell type
+          mean_cor_coeff <- mean(df$identity_score)
+          cor_coeff_sd <- sd(df$identity_score)
+          
+          # Calculate the distance of the identity score from population mean (how many std devs apart?)
+          df$z_score <- (df$identity_score - mean_cor_coeff)/cor_coeff_sd
+          
+          
+          master_df <- rbind(master_df,df)
+          
+          
+        } # close for loop that iterates over clusters
+        
+      }) # Close with progress
+      
+      
+      master_df  
+      
+    }
     
   }) # close analyzed_df reactive expression
   
