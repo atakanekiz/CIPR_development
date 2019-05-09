@@ -140,6 +140,8 @@ server <- function(input, output){
       # Convert gene symbols to lower case letters to allow mouse-vs-human comparisons
       dat[,gene_column] <- tolower(dat[,gene_column])
       
+      dat <- dat[!duplicated(dat[,gene_column]),]
+      
       dat
       
     } else {
@@ -175,7 +177,7 @@ server <- function(input, output){
         
         
         
-        dat <- read.csv(inFile$datapath, check.names=TRUE, strip.white = TRUE, stringsAsFactors = F)
+        dat <- read.csv(inFile$datapath, check.names=FALSE, strip.white = TRUE, stringsAsFactors = F)
         
         
         # Make sure the column names are proper for correct subsetting
@@ -193,6 +195,8 @@ server <- function(input, output){
         gene_column <<- grep("gene", colnames(dat), ignore.case = T, value = T)
         
         dat[,gene_column] <- tolower(dat[,gene_column])
+        
+        dat <- dat[!duplicated(dat[,gene_column]),]
         
         dat
         
