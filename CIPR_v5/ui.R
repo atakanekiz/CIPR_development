@@ -43,8 +43,8 @@ ui <- fluidPage(
                  
                  radioButtons("comp_method", 
                               label = "Select method for comparisons", 
-                              choices = c("logFC dot product", "logFC Spearman", "logFC Pearson", "Spearman (all genes)", "Pearson (all genes)"), 
-                              selected = "logFC dot product"), 
+                              choices = c("Spearman (all genes)", "Pearson (all genes)", "logFC dot product", "logFC Spearman", "logFC Pearson"), 
+                              selected = "Spearman (all genes)"), 
                  
                  # horizontal line
                  tags$hr(), 
@@ -115,7 +115,7 @@ ui <- fluidPage(
         tabPanel("How to use this program",
                  
                  h3("Summary"),
-                 p("Understanding the biological identity of cell clusters in single cell RNA sequencing (SCseq) experiments can be challenging due to overlapping gene expression profiles. An accurate assessment of the cluster identity requires analyzing multiple differentially expressed genes simultaneously as opposed to examining a few selected lineage-specific markers. Cluster Identity PRedictor (CIPR) compares user-provided SCseq cluster gene signatures with", a('Immunological Genome Project (ImmGen)', href= 'https://www.immgen.org'), "mouse immune cell datasets -- or with a user-provided reference dataset --, and calculates an", strong('identity score (IS)'), "for each SCseq cluster per reference cell subset. To calculate the IS, CIPR compares differential gene expression signatures of unknown clusters to that of known reference samples using three different methods: 1) Log fold-change comparison (dot product), 2) Spearman's correlation, and 3) Pearsons's correlation. For further information, please read the sections below."),
+                 p("Understanding the biological identity of cell clusters in single cell RNA sequencing (SCseq) experiments can be challenging due to overlapping gene expression profiles. An accurate assessment of the cluster identity requires analyzing multiple genes simultaneously as opposed to examining a few selected lineage-specific markers. Cluster Identity PRedictor (CIPR) compares user-provided SCseq cluster gene signatures with", a('Immunological Genome Project (ImmGen)', href= 'https://www.immgen.org'), "mouse immune cell datasets -- or with a user-provided reference dataset --, and calculates an", strong('identity score (IS)'), "for each SCseq cluster per reference cell subset. To calculate the IS, CIPR compares differential gene expression signatures of unknown clusters to that of known reference samples using three different methods: 1) Log fold-change comparison (dot product), 2) Spearman's correlation, and 3) Pearsons's correlation. For further information, please read the sections below."),
                  
                  br(),br(),
                  
@@ -131,16 +131,29 @@ ui <- fluidPage(
                  
                  
                  h3("Input data"),
+                 p("CIPR accepts gene expression data derived from SCseq experiments in comma separated value (.csv) format. Depending on the calculation method to be used, data need to be formatted as described below. Popular SCseq analysis software including Loupe Cell Browser (10X Genomics) and Seurat (Satija Lab, NY) can be used to export suitable data frames for logFC comparison methods"), 
+                 strong("For correlation methods using the entire gene set"),
                  tags$ul(
-                   tags$li("Provide the expression data from SCseq cell clusters as a csv file."),
-                   tags$li("This file", strong("must have at least three columns named Gene, logFC, and cluster"), ". Capitalization does not matter and extra characters before or after these column names are also allowed. The other columns are ignored."),
-                   tags$li("To create plots with correct titles, avoid using spaces and special characters as column names"),
-                   tags$li(strong("FindAllMarkers"), "function from popular single-cell genomics package Seurat can be used to create this data frame. Please see below for example code to obtain this data frame from your data."),
-                   tags$li("Alternatively, differential gene expression data can be exported using Loupe Cell Browser (10X Genomics) and manually edited to obtain the correct format for CIPR.")
+                   tags$li("The input data frame should contain the average gene expression values per cluster for each gene in the experiment."),
+                   tags$li("This data frame must have a column named 'gene', and other columns should have the average expression values in individual clusters."),
+                   tags$li("If SCseq data is being analyzed with Seurat package,", strong("AverageExpression"), "function can be used to generate a CIPR-ready data frame. Please see below the example code snippet to obtain a suitable input data using this method.")
+                   
+                   ),
+                 
+                 br(),
+                 strong("For logFC comparison methods using differentially expressed genes"),
+                 tags$ul(
+                   tags$li("This file must have at least three columns named Gene, logFC, and cluster. Other columns can be present in the input file but they will be ignored in the analysis pipeline."),
+                   tags$li("This is a long data format where differentially expressed genes in clusters are listed in the rows"),
+                   tags$li("For this method, Seurat's", strong("FindAllMarkers"), "function can be used to generate a CIPR-ready dataframe. Extra columns generated by this function will be ignored in CIPR pipeline. Example code snippet to obtain this data frame is provided below."),
+                   tags$li("Alternatively, the differential gene expression data can be exported using Loupe Cell Browser (10X Genomics) and manually edited to obtain the correct format for CIPR")
                    
                  ),
-                 br(),
-                 p(strong("Sample SCseq expression data (generated via Seurat's FindAllMarkers() function)")),
+                   
+                   
+              br(),
+              
+                 p(strong("Sample input data. (A) For correlation methods (B) For logFC comparison methods")),
                  imageOutput("sample_data_file_logfc"),
                  
                  
@@ -148,11 +161,11 @@ ui <- fluidPage(
                  tags$ul(
                    tags$li("This program is pre-loaded with", a('ImmGen' , href= 'https://www.immgen.org'), "microarray data for easily investigating immune cell clusters in SCseq experiments."),
                    tags$li("If one would like to provide a custom reference dataset, any number of highthroughput data types can be used including microarray, RNAseq, and proteomics data, as long as data in the reference file are normalized together."),
-                   tags$li("Reference data should be in linear space."),
+                   tags$li("Reference data should be normalized and log-transformed"),
                    tags$li("Custom reference datasets can be uploaded as a csv file and should contain gene expression data from known cell types."),
                    tags$li("Reference dataset should have genes in rows and cell types in columns."),
-                   tags$li("The first column of the reference data frame must have gene names (e.g. Pdcd1, Tnfa) and must be named as", strong("Gene."), "Capitalization does not matter and characters before and after 'gene' are allowed."),
-                   tags$li("This file can contain biological and technical replicates. In this case, IS is calculated and plotted for each replicate separately.")
+                   tags$li("The first column of the reference data frame must have gene names (e.g. Pdcd1, Tnfa) and must be named as", strong("Gene.")),
+                   tags$li("This file can contain biological and technical replicates. In this case, the identity score is calculated and plotted for each replicate separately.")
                  ),
                  br(),
                  p(strong("Sample reference gene expression data")),
@@ -162,55 +175,61 @@ ui <- fluidPage(
                  h3("About (optional) custom reference annotation data"),
                  tags$ul(
                    tags$li("If a custom reference dataset is used, although not necessary, an annotation file (in csv format) can be uploaded to obtain more informative plots."),
-                   tags$li(strong("Annotation file must contain the columns named as 'short_name', 'long_name', 'description', and 'reference_cell_type'.")),
-                   tags$li(strong("Data under 'short_name' column must EXACTLY match the column names of the reference gene expression data.")),
+                   tags$li("Annotation file must contain the columns named as", strong("'short_name', 'long_name', 'description', and 'reference_cell_type'")),
+                   tags$li("Data under 'short_name' column must", strong("EXACTLY"), "match the column names of the reference gene expression data."),
                    tags$li("Annotation file can have other columns as well, which will be ignored.")
                  ),
-                 br(),br(),
+ 
                  p(strong("Sample reference annotation data")),
                  imageOutput("sample_annotation_file"),
                  
                  
                  h3("How is cell identity score calculated?"),
-                 p("CIPR can use one of three calculation approaches: 1) Log fold change comparison (dot product), 2) Spearman's correlation, 3) Pearson's correlation"),
+                 p("CIPR can either analyze the correlation between unknown clusters and reference cell subsets by using the entire gene set, or can compare the patterns of differential gene expression in unknown clusters and individual reference subsets. When the whole gene set correlation method is used, the used can select either Spearman's or Pearson's correlation. When the logFC comparison method is used, the user can select one of the three calculation approaches: 1) Log fold change (logFC) dot product, 2) Spearman's correlation, 3) Pearson's correlation"),
+              
                  br(),
+              
+              h4(strong("If correlation method is used:")),
+              
+              tags$ul(
+                tags$li("When using correlation approaches, CIPR algorithm calculates pair-wise correlation coefficients between unknown clusters and each of the reference subsets using either Spearman's or Pearson's methods."),
+                tags$li("The correlation coefficients from pairwise comparisons are reported as identity score per reference cell type for each cluster."),
+                tags$li("For each cell cluster in the experiment, correlation coefficients of reference cell types are plotted in dot plots which shows reference cell types on the x-axis, and correlation coefficients on the y-axis."),
+                tags$li("Reference cell types with the 5 highest identity scores for each unknown cluster is summarized in an interactive dot plot"),
+                tags$li("Although, the effects of the outlier genes will be mitigated by the other genes, cell types with only a few strongly distinguishing genes may be misclassified in this method.")
+              ),
+              
+              br(), br(),
                  
-                 h4(strong("If logFC dot product method is used:")),
+                 h4(strong("If logFC comparison method is used:")),
                  
                  p("The algorithm works first by calculating gene expression signatures in the reference file, and then comparing the unknown cluster signatures with these reference signatures. Specifically the following processes are performed:"),
                  h5(strong("Pre-processing of reference dataset")),
                  tags$ul(
                    tags$li("The algorithm uses pre-loaded ImmGen signatures or a user-uploaded reference expression file (see below for the details of reference file format)."),
-                   tags$li("The reference expression file should contain normalized gene expression values in linear space  in rows and cell types in columns. Reference data can be derived from high-throughput experiments such as microarray or RNAseq."),
-                   tags$li("For each gene found in the reference file, algorithm calculates the ratio of gene expression in each cell type (i.e. individual columns) to the average gene expression value of the whole data set (i.e. all columns)."),
-                   tags$li("Ratio is log transformed to obtain positive values indicating upregulation and negative values indicating downregulation in the specific cell type. Therefore, pre-processing of the reference file results in a data frame that features logFC values of each gene in each cell type.")
+                   tags$li("The reference expression file should contain normalized gene expression values in log scale in rows and cell types in columns. Reference data can be derived from various high-throughput experiments such as microarray or RNA sequencing"),
+                   tags$li("For each gene found in the reference file, algorithm subtracts the average gene expression value of the whole data set (i.e. all columns) from the gene expression value in each cell type (i.e. individual columns) to calculate logFC"),
+                   tags$li("Therefore, positive logFC values indicate upregulation and negative values indicate downregulation of a given gene. Therefore, pre-processing of the reference file results in a data frame that features logFC values of each gene in each cell type.")
                  ),
                  h5(strong("Analysis of experimental cluster signatures against reference file")),
                  tags$ul(
                    tags$li("Uploaded cluster signature file should contain information about genes, logFC in expression levels and the cluster information (see below for the correct file format)."),
                    tags$li("Algorithm finds the common genes between experimental data and the reference dataset."),
-                   tags$li("For each shared gene, logFC values of differentially expressed genes from unknown clusters and are multiplied with the logFC values in the reference dataset. This way if a gene is upregulated or downregulated in both the unknown cluster and the reference cell type (i.e. positive correlation), the multiplication will result in a positive number (i.e. multiplication of two positive or two negative numbers). Alternatively, if a gene is differentially regulated in opposite directions in the unknown cluster and reference cell type (i.e. negative correlation), multiplication of logFC values will result in a negative number."),
-                   tags$li("Multiplied logFC values per each gene are added up, resulting in an aggregate IS across the dataset for each cluster in the experimental data. This way, genes that have similar expression patterns in the experimental cell cluster and the reference cell type contribute to a higher IS, whereas genes with opposite expression patterns will result in a lower IS."),
+                   tags$li("User can select one of three methods for comparing logFC values: Spearman's correlation, Pearson's correlation, and logFC dot product"),
+                   tags$li("Correlation methods calculate correlation coefficients between logFC values for each unknown cluster-reference cell subset pairs and reports these as identity scores."),
+                   tags$li("If logFC dot product method is selected, for each shared gene, logFC values of differentially expressed genes from unknown clusters are multiplied with the logFC values in the reference subsets. This way if a gene is upregulated or downregulated in both the unknown cluster and the reference cell type (i.e. positive correlation), the multiplication will result in a positive number (i.e. multiplication of two positive or two negative numbers). Alternatively, if a gene is differentially regulated in opposite directions in the unknown cluster and reference cell type (i.e. negative correlation), multiplication of logFC values will result in a negative number."),
+                   tags$li("Multiplied logFC values per each gene are added up, resulting in an aggregate identity score for each cluster in the experimental data. This way, genes that have similar expression patterns in the experimental cell cluster and the reference cell contribute to a higher identity score, whereas genes with opposite expression patterns will result in a lower identity score"),
                    tags$li(strong("This way, each cluster in the SCseq experiment is analyzed against each known cell type in the reference file and scored for its overall similarity using a dot product approach. A higher identity score indicates the unknown cluster has a similar gene expression profile to a given reference dataset, and suggest shared biological origins.")),
-                   tags$li("For each cell cluster in the experiment, aggregate IS of reference cell types are plotted in dot plots which shows reference cell types on the x-axis, and aggregate IS on the y-axis."),
-                   tags$li("A summary plot showing the reference cell types correspoint to the highest 5 IS score is also shown in a separate tab for easy visualization.")
+                   tags$li("For each cell cluster in the experiment, aggregate identity score of reference cell types are plotted in dot plots which shows reference cell types on the x-axis, and aggregate identity score on the y-axis."),
+                   tags$li("Reference cell types with the 5 highest identity scores are also plotted for easy visualization.")
                  ),
+              
                  br(),
+              
+              p("Although different calculation methods implemented in CIPR generated comparable results while analyzing heterogeneous immune cell populations from tumors (Ekiz HA and Huffaker TB, JCI Insight, 2019), some methods may perform better than others depending on the experimental context. Importantly, since trancript-level correlations may not be sufficient to fully define the cellular pheonotypes, further bench work may be needed to validate the findings from SCseq experiments."),
                  
                  
-                 h4(strong("If correlation methods are used:")),
-                
-                 tags$ul(
-                   tags$li("When using correlation approaches, CIPR algorithm performs similar pre-processing steps to obtain logFC values for reference cell types"),
-                   tags$li("Pairwise correlation coefficients are computed using logFC values obtained from unknown clusters and each reference cell type."),
-                   tags$li("User can select Pearson's correlation to calculate linear relationship between comparators or Spearman's correlation to compare ranks of differentially expressed genes."),
-                   tags$li("The correlation coefficients from pairwise comparisons are reported as identity score per reference cell type."),
-                   tags$li("For each cell cluster in the experiment, correlation coefficients of reference cell types are plotted in dot plots which shows reference cell types on the x-axis, and correlation coefficients on the y-axis."),
-                   tags$li("A summary plot showing the reference cell types corresponding to the highest 5 correlation coefficients is also shown."),
-                   tags$li("Although, the effects of potential outlier genes will be mitigated by the other genes, cell types with only a few strongly distinguishing genes may be misclassified in this method.")
-                   ),
                  
-                 br(), br(),
                  
 
                  h3("How confident is the prediction?"),
@@ -241,10 +260,47 @@ ui <- fluidPage(
                  ),
         
         h3("Example R code to generate CIPR input"),
-        h4("For logFC dot product method"),
+        h4("For correlation methods using whole gene set"),
         tags$pre(
 "
+# Load Seurat package (v3.0.0 as of this writing)
 library(Seurat)
+
+# Generate a Seurat object by following Seurat vignettes 
+# (https://satijalab.org/seurat/)
+
+
+
+# Calculate average expression per cluster
+# For cluster level analysis, combined object should have cluster 
+# information in the Identity slot.    
+avg_exp <- AverageExpression(seurat_obj)
+
+# Pull gene names from rownames and assign into a separate column
+avg_exp$gene <- rownames(avg_exp)
+
+# Data frame contains per cluster average gene expression values
+head(avg_exp)
+
+#            clus_1    clus_2    clus_3    clus_4     clus_5    gene
+# Sox17   0.0000000 0.0000000 0.0000000 0.0000000 0.00000000   Sox17
+# Mrpl15  0.9055106 1.0769703 0.7100053 0.4363261 0.64374313  Mrpl15
+# Lypla1  0.2394298 0.2251968 0.3076141 0.2521298 0.05390125  Lypla1
+# Tcea1   2.4971414 2.5244691 1.4478863 0.8615930 1.13819434   Tcea1
+# Atp6v1h 0.4922616 0.4297001 0.4404676 0.2995814 0.49688672 Atp6v1h
+# Rb1cc1  0.5492173 0.4046591 0.5008476 0.5658034 0.59000428  Rb1cc1
+
+
+
+# Save csv file ready to be used with CIPR
+write.csv(avg_exp, 'per_cluster_avg_expression.csv', row.names = F)
+
+"),
+br(),
+
+h4("For logFC comparison methods"),
+
+tags$pre("library(Seurat)
 
 # Generate a Seurat object by following Seurat vignettes 
 # (https://satijalab.org/seurat/)
@@ -253,81 +309,24 @@ cluster_markers <- FindAllMarkers(seurat_obj)
 
 head(cluster_markers)
 # >  p_val avg_logFC pct.1 pct.2 p_val_adj   cluster  gene
-# >1     0  1.794907 0.815 0.151         0   Clust_1 Cd8b1
-# >2     0  1.760971 0.994 0.253         0   Clust_1  Cd3g
-# >3     0  1.732805 0.832 0.116         0   Clust_1 Cxcr6
-# >4     0  1.686574 0.807 0.133         0   Clust_1  Cd8a
-# >5     0  1.487584 0.994 0.265         0   Clust_1  Cd3d
-# >6     0  1.429320 0.763 0.119         0   Clust_1  Lag3
+# >1     0  1.794907 0.815 0.151         0   clus_1  Cd8b1
+# >2     0  1.760971 0.994 0.253         0   clus_1   Cd3g
+# >3     0  1.732805 0.832 0.116         0   clus_1  Cxcr6
+# >4     0  1.686574 0.807 0.133         0   clus_1   Cd8a
+# >5     0  1.487584 0.994 0.265         0   clus_1   Cd3d
+# >6     0  1.429320 0.763 0.119         0   clus_1   Lag3
 
 
 
 #  Save the cluster_markers object as .csv file
-write.csv(cluster_markers, 'clustermarkers.csv', row.names=F)"),
-br(),
-
-h4("For correlation methods"),
-
-tags$pre("
-
-library(Seurat)
-library(tibble)
-library(data.table)
-
-
-# Extract normalized gene expression counts
-# Columns represent individual cells, rows represent genes
-exprs <- as.data.frame(as.matrix(seurat_obj@data))
-
-# Transpose the data frame
-exprs <- as.data.frame(t(exprs))
-
-# Add a column to indicate cluster belonging of each cell
-exprs <- add_column(exprs, Cluster = seurat_obj@ident, .after = 0)
-
-# Convert data frame to data.table for efficient processing
-exprs <- data.table(exprs)
-
-# Calculate the average expression of genes per cluster
-exprs <- exprs[, lapply(.SD, mean), by=Cluster]
-
-# Store cluster information as an object
-cluster_names <- exprs$Cluster
-
-# Store gene name information as an object
-gene_names <- colnames(exprs)
-gene_names <- gene_names[gene_names != 'Cluster']
-
-# Discard 'Cluster' column and transpose the dataframe
-exprs <- as.data.frame(t(exprs[, colnames(exprs) != 'Cluster']))
-
-# Give cluster names to column names for CIPR to detect clusters
-colnames(exprs) <- cluster_names
-
-# Create a column named 'Gene' for CIPR to detect genes
-exprs <- add_column(exprs, Gene=gene_names, .after = 0)
-
-# Data frame in which rows represent individual cells
-exprs[1:5,1:5]
-
-# >Gene    Cluster_1  Cluster_2  Cluster_3  Cluster_4
-# >Mrpl15  0.5939144  0.4352030  0.2814939  0.4863504
-# >Lypla1  0.3457666  0.1579630  0.1724877  0.2503396
-# >Tcea1   0.3821044  0.2566057  0.2998205  0.3587843
-# >Atp6v1h 0.1757608  0.1582002  0.1243377  0.4227891
-# >Rb1cc1  0.1338744  0.1592661  0.1462728  0.1576287
-         
-
-# Save the exprs object as a .csv file
-write.csv(exprs, 'avg_exprs_per_cluster.csv')
-         
-         "),
+write.csv(cluster_markers, 'clustermarkers.csv', row.names=F)
+"),
      
 
                  h3("CIPR Release Notes"),
         tags$ul(
-          tags$li("CIPR v4"),
-          tags$li("Three different computational methods comparing differential expression data (logFC dot product, Spearman's and Pearson's correlation can now be used in the same user interface"),
+          tags$li("CIPR v5"),
+          tags$li("5 different computational methods are implemented allowing the comparisons of i) all genes in the experiment, ii) differentially expressed genes in clusters."),
           tags$li("ImmGen v1 and v2 data are renormalized from raw data files (.CEL), combined and pre-loaded as the reference. These two datasets contain partially overlapping cell types, and were generated using the same microarray platform (Affymetrix MoGene ST1.0 array). For further information please see ImmGen website and associated publications.")
         ),
                  

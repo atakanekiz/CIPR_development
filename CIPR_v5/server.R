@@ -44,7 +44,7 @@ server <- function(input, output){
   output$ui_sel_ref_annot <- renderUI ({
     
     if (input$sel_reference == "Custom"){
-      fileInput("annot_file", "Upload custom annotation file",
+      fileInput("annot_file", "Upload custom annotation file (optional)",
                 multiple = F, 
                 accept = c("text/csv",
                            "text/comma-separated-values,text/plain",
@@ -56,7 +56,7 @@ server <- function(input, output){
   # Show example input file format for logFC dot product method
   output$sample_data_file_logfc <- renderImage({
     
-    list(src = "data/cluster_expr_IMG_logfc.png",
+    list(src = "data/cluster_expr_IMG.png",
          alt = "Sample SCseq data",
          width=500)
     
@@ -124,7 +124,7 @@ server <- function(input, output){
         validate(
           need(
             {if(sum(Reduce("|", lapply(c("logfc", "gene", "cluster"), grepl, colnames(dat), ignore.case=T))) == 3) TRUE else FALSE},
-            "Formatting error: Make sure your dataset contains at least three columns named 'logfc', 'gene', and 'cluster' (Capitalization of the column names is not important, but duplicate names are not allowed. Data can have other columns which will be ignored)"
+            "Formatting error: Make sure your dataset contains at least three columns named 'logfc', 'gene', and 'cluster' (Capitalization of the column names is not important. Data can have other columns which will be ignored)"
           )
         )
         
@@ -240,7 +240,7 @@ server <- function(input, output){
         
         # Make sure the file type is correct
         validate(
-          need(tools::file_ext(inFile$name) %in% c(
+          need(tools::file_ext(in_refFile$name) %in% c(
             'text/csv',
             'text/comma-separated-values',
             'text/plain',
@@ -258,7 +258,12 @@ server <- function(input, output){
         
         # Calculate the ratio of gene expression in a given cell type compared 
         # to the average of the whole cohort. Calculate log (natural) fold change and store it in immgen_dat2
-        reference_ratio <- log1p(sweep(reference[,!colnames(reference) %in% ref_gene_column], 1, FUN="/", gene_avg))
+        
+        # Linear data
+        # reference_ratio <- log1p(sweep(reference[,!colnames(reference) %in% ref_gene_column], 1, FUN="/", gene_avg))
+        
+        # Log scale data
+        reference_ratio <- sweep(reference[,!colnames(reference) %in% ref_gene_column], 1, FUN="-", gene_avg)
         
         
         # Combine gene names and the log fold change in one data frame
@@ -607,7 +612,7 @@ server <- function(input, output){
           
           df <- rownames_to_column(df, var="reference_id")
           
-          # FIX THIS LATER AFTER UPDATING THE IMMGEN/CUSTOM REFERENCE UPLOADING CODE ABOVE SECTION
+          
           
           if(input$sel_reference == "ImmGen"){
             
@@ -694,7 +699,7 @@ server <- function(input, output){
       
       
       
-      withProgress(message = 'Analyzing', value = 0, {
+      withProgress(message = 'Graphing', value = 0, {
         
         for (i in clusters()) {
           
@@ -752,7 +757,7 @@ server <- function(input, output){
       
     } else{
     
-    withProgress(message = 'Analyzing', value = 0, {
+    withProgress(message = 'Graphing', value = 0, {
       
         for (i in clusters()) {
         
